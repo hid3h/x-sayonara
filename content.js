@@ -27,8 +27,14 @@
     });
   }
 
+  function isHiddenTabActive() {
+    const active = document.querySelector('[role="tab"][aria-selected="true"]');
+    return !active || HIDE_TABS.includes(active.textContent.trim());
+  }
+
   function hideHomePosts() {
     if (location.pathname !== "/home") return;
+    if (!isHiddenTabActive()) return;
     const primary = document.querySelector('[data-testid="primaryColumn"]');
     if (!primary) return;
     primary.querySelectorAll('[data-testid="cellInnerDiv"]').forEach((cell) => {

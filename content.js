@@ -27,7 +27,18 @@
     });
   }
 
+  function hideHomePosts() {
+    if (location.pathname !== "/home") return;
+    const primary = document.querySelector('[data-testid="primaryColumn"]');
+    if (!primary) return;
+    primary.querySelectorAll('[data-testid="cellInnerDiv"]').forEach((cell) => {
+      hide(cell);
+    });
+  }
+
   function run() {
+    hideHomePosts();
+
     document.querySelectorAll('[role="tab"]').forEach((tab) => {
       if (HIDE_TABS.includes(tab.textContent.trim())) hide(tab);
     });

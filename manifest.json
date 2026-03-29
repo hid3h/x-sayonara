@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "X Sayonara",
+  "version": "1.0",
+  "description": "Hide unwanted elements on X.com",
+  "content_scripts": [
+    {
+      "matches": ["https://x.com/*", "https://twitter.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

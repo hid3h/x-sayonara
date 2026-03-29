@@ -34,6 +34,9 @@
     primary.querySelectorAll('[data-testid="cellInnerDiv"]').forEach((cell) => {
       hide(cell);
     });
+    primary.querySelectorAll('[role="progressbar"]').forEach((el) => {
+      hide(el);
+    });
   }
 
   function run() {

@@ -1,22 +1,69 @@
 (() => {
-  const HIDE_TABS = ["おすすめ", "フォロー中"];
-  const HIDE_SECTIONS = ["本日のニュース", "「いま」を見つけよう"];
+  const DEFAULT_TIMELINES = new Set(["for-you", "following"]);
+  const DEFAULT_LABELS = new Set(["おすすめ", "フォロー中", "For you", "Following"]);
+  const SIDEBAR_HEADINGS = new Set([
+    "本日のニュース", "「いま」を見つけよう", "Today's News", "What's happening",
+  ]);
+  const TIMELINE_HEADINGS = new Set(["ホームタイムライン", "Home timeline", "Timeline: Your Home Timeline"]);
+  const HIDDEN = "data-x-sayonara-hidden";
+  const HIDE_LEGACY_TIMELINE = "data-x-sayonara-hide-home";
+  let previouslyHidden = new Set();
+  let pending = false;
 
-  function hide(el) {
-    if (el) el.style.setProperty("display", "none", "important");
-  }
-
-  function findSectionRoot(heading, boundary) {
-    let el = heading;
+  function legacySectionRoot(heading, boundary) {
     let candidate = null;
-    while (el && el !== boundary && el.parentElement) {
+    for (let el = heading; el && el !== boundary && el.parentElement; el = el.parentElement) {
       if (el.parentElement.children.length >= 5) candidate = el;
-      el = el.parentElement;
     }
     return candidate;
   }
 
-  let pending = false;
+  function hideHome(hidden) {
+    if (!/^\/home\/?$/.test(location.pathname)) return false;
+
+    const tabList = document.querySelector(
+      'main [role="tablist"], [data-testid="primaryColumn"] [role="tablist"]',
+    );
+    const tabs = [...(tabList?.querySelectorAll('[role="tab"]') ?? [])];
+    const usesTimelineIds = tabs.some((tab) => tab.hasAttribute("data-pinned-timeline"));
+    const defaultTabs = tabs.filter((tab) => usesTimelineIds
+      ? DEFAULT_TIMELINES.has(tab.getAttribute("data-pinned-timeline"))
+      : DEFAULT_LABELS.has((tab.getAttribute("aria-label") || tab.textContent).trim()));
+    defaultTabs.forEach((tab) => hidden.add(tab));
+
+    const active = tabs.find((tab) => tab.getAttribute("aria-selected") === "true");
+    if (active && !defaultTabs.includes(active)) return false;
+
+    // The current layout gives the feed its own labeled section, separate from the composer.
+    for (const section of document.querySelectorAll("main section[aria-labelledby]")) {
+      const heading = document.getElementById(section.getAttribute("aria-labelledby"));
+      if (TIMELINE_HEADINGS.has(heading?.textContent.trim()) ||
+          section.querySelector('[id^="urt:home:"]')) {
+        hidden.add(section);
+      }
+    }
+    return true;
+  }
+
+  function hideSidebar(hidden) {
+    for (const heading of document.querySelectorAll("h2")) {
+      if (!SIDEBAR_HEADINGS.has(heading.textContent.trim()) || heading.closest("main")) continue;
+      const sidebar = heading.closest('[data-testid="sidebarColumn"]');
+      const section = sidebar ? legacySectionRoot(heading, sidebar) : heading.closest("section");
+      if (section) hidden.add(section);
+    }
+  }
+
+  function run() {
+    const hidden = new Set();
+    document.documentElement.toggleAttribute(HIDE_LEGACY_TIMELINE, hideHome(hidden));
+    hideSidebar(hidden);
+    for (const el of previouslyHidden) {
+      if (!hidden.has(el)) el.removeAttribute(HIDDEN);
+    }
+    for (const el of hidden) el.setAttribute(HIDDEN, "");
+    previouslyHidden = hidden;
+  }
 
   function schedule() {
     if (pending) return;
@@ -27,43 +74,12 @@
     });
   }
 
-  function isHiddenTabActive() {
-    const active = document.querySelector('[role="tab"][aria-selected="true"]');
-    return !active || HIDE_TABS.includes(active.textContent.trim());
-  }
-
-  function hideHomePosts() {
-    if (location.pathname !== "/home") return;
-    if (!isHiddenTabActive()) return;
-    const primary = document.querySelector('[data-testid="primaryColumn"]');
-    if (!primary) return;
-    primary.querySelectorAll('[data-testid="cellInnerDiv"]').forEach((cell) => {
-      hide(cell);
-    });
-    primary.querySelectorAll('[role="progressbar"]').forEach((el) => {
-      hide(el);
-    });
-  }
-
-  function run() {
-    hideHomePosts();
-
-    document.querySelectorAll('[role="tab"]').forEach((tab) => {
-      if (HIDE_TABS.includes(tab.textContent.trim())) hide(tab);
-    });
-
-    const sidebar = document.querySelector('[data-testid="sidebarColumn"]');
-    if (!sidebar) return;
-    sidebar.querySelectorAll("h2").forEach((h2) => {
-      if (HIDE_SECTIONS.includes(h2.textContent.trim())) {
-        hide(findSectionRoot(h2, sidebar));
-      }
-    });
-  }
-
   run();
   new MutationObserver(schedule).observe(document.body, {
     childList: true,
     subtree: true,
+    attributes: true,
+    attributeFilter: ["aria-selected", "data-pinned-timeline"],
   });
+  window.addEventListener("popstate", schedule);
 })();

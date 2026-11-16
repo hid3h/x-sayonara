@@ -1,0 +1,10 @@
+[data-x-sayonara-hidden],
+html[data-x-sayonara-hide-home] [data-testid="primaryColumn"] [data-testid="cellInnerDiv"],
+html[data-x-sayonara-hide-home] [data-testid="primaryColumn"] [role="progressbar"] {
+  display: none !important;
+}
+
+/* Keep Immersive Translate from duplicating the Japanese navigation labels. */
+nav[aria-label="メインメニュー"] .immersive-translate-target-wrapper {
+  display: none !important;
+}
